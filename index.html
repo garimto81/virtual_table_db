@@ -90,6 +90,11 @@
         </main>
     </div>
 
+    <!-- 상태 표시줄 -->
+    <footer id="status-bar" class="fixed bottom-0 left-0 w-full bg-gray-800 text-white p-2 text-xs text-center font-mono">
+        Initializing...
+    </footer>
+
     <script>
         // ===================================================================================
         // TODO: 아래 Supabase 설정을 자신의 프로젝트 설정으로 교체하세요.
@@ -102,6 +107,7 @@
         let supabase;
         
         // UI Elements
+        const statusBar = document.getElementById('status-bar');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const loginView = document.getElementById('login-view');
         const appView = document.getElementById('app-view');
@@ -119,61 +125,63 @@
         // Helper functions
         const showLoader = () => loadingSpinner.classList.remove('hidden');
         const hideLoader = () => loadingSpinner.classList.add('hidden');
+        const updateStatus = (message, isError = false) => {
+            console.log(`[STATUS] ${message}`);
+            statusBar.textContent = message;
+            statusBar.style.backgroundColor = isError ? '#ef4444' : '#374151';
+        };
 
         // Supabase 초기화
         try {
-            if (SUPABASE_URL.includes('your_supabase_url') || SUPABASE_ANON_KEY.includes('your_supabase_anon_key')) {
-                alert("Supabase URL과 Anon Key를 설정해주세요.");
-            } else {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR_SUPABASE_URL') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('YOUR_SUPABASE_ANON_KEY')) {
+                throw new Error("Supabase URL 또는 Anon Key가 설정되지 않았습니다.");
             }
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            updateStatus("Supabase client initialized successfully.");
         } catch (e) {
-            console.error("Supabase 초기화 실패:", e);
+            updateStatus(`Initialization Error: ${e.message}`, true);
         }
 
         // 로그인/세션 관리
         loginBtn.addEventListener('click', async () => {
-            console.log('Google 로그인 시도...');
+            if (!supabase) return updateStatus("Supabase client is not available.", true);
+            updateStatus("Attempting Google sign-in...");
             showLoader();
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    queryParams: {
-                        hd: ALLOWED_DOMAIN
-                    }
+                    queryParams: { hd: ALLOWED_DOMAIN }
                 }
             });
             if (error) {
-                console.error('Google 로그인 오류:', error);
-                alert('로그인에 실패했습니다. 개발자 콘솔을 확인해주세요.');
+                updateStatus(`Google Login Error: ${error.message}`, true);
                 hideLoader();
             }
         });
 
         logoutBtn.addEventListener('click', async () => {
-            console.log('로그아웃 시도...');
+            if (!supabase) return;
+            updateStatus("Signing out...");
             showLoader();
             await supabase.auth.signOut();
             window.location.reload();
         });
 
         async function handleSession(session) {
-            console.log('handleSession 호출됨. session:', session);
+            updateStatus(session ? `Session found for ${session.user.email}` : "No active session.");
             if (session && session.user) {
-                console.log('사용자 이메일:', session.user.email);
                  if (session.user.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-                    console.log('도메인 확인 성공. 앱 뷰를 표시합니다.');
+                    updateStatus(`Domain verified for ${session.user.email}. Loading app...`);
                     loginView.classList.add('hidden');
                     appView.classList.remove('hidden');
                     userEmailEl.textContent = session.user.email;
                     await loadTournaments();
                 } else {
-                    console.warn(`'${ALLOWED_DOMAIN}' 도메인 사용자가 아닙니다. 로그아웃 처리합니다.`);
+                    updateStatus(`Access denied for ${session.user.email}. Signing out...`, true);
                     alert(`'${ALLOWED_DOMAIN}' 도메인 사용자만 접근할 수 있습니다.`);
                     await supabase.auth.signOut();
                 }
             } else {
-                console.log('세션 없음. 로그인 뷰를 표시합니다.');
                 loginView.classList.remove('hidden');
                 appView.classList.add('hidden');
             }
@@ -182,17 +190,12 @@
 
         // 데이터 로딩 함수
         async function loadTournaments() {
-            const { data, error } = await supabase
-                .from('tournaments')
-                .select('id, tournament_name')
-                .eq('status', 'active')
-                .order('start_date', { ascending: false });
-
+            updateStatus("Loading active tournaments...");
+            const { data, error } = await supabase.from('tournaments').select('id, tournament_name').eq('status', 'active').order('start_date', { ascending: false });
             if (error) {
-                console.error('대회 목록 로딩 실패:', error);
+                updateStatus(`Failed to load tournaments: ${error.message}`, true);
                 return;
             }
-
             tournamentSelect.innerHTML = '<option>대회를 선택하세요...</option>';
             data.forEach(t => {
                 const option = document.createElement('option');
@@ -200,20 +203,16 @@
                 option.textContent = t.tournament_name;
                 tournamentSelect.appendChild(option);
             });
+            updateStatus(`${data.length} active tournaments loaded.`);
         }
         
         async function loadTables(tournamentId) {
-            const { data, error } = await supabase
-                .from('tournament_tables')
-                .select('id, table_name, table_number')
-                .eq('tournament_id', tournamentId)
-                .order('table_number', { ascending: true });
-
+            updateStatus(`Loading tables for tournament ID: ${tournamentId.substring(0,8)}...`);
+            const { data, error } = await supabase.from('tournament_tables').select('id, table_name, table_number').eq('tournament_id', tournamentId).order('table_number', { ascending: true });
             if (error) {
-                console.error('테이블 목록 로딩 실패:', error);
+                updateStatus(`Failed to load tables: ${error.message}`, true);
                 return;
             }
-            
             tableSelect.innerHTML = '<option>테이블을 선택하세요...</option>';
             data.forEach(t => {
                 const option = document.createElement('option');
@@ -222,6 +221,7 @@
                 tableSelect.appendChild(option);
             });
             tableSelect.disabled = false;
+            updateStatus(`${data.length} tables loaded.`);
         }
 
         // 이벤트 리스너
@@ -245,30 +245,31 @@
         startReportingBtn.addEventListener('click', () => {
             const tournamentName = tournamentSelect.options[tournamentSelect.selectedIndex].text;
             const tableName = tableSelect.options[tableSelect.selectedIndex].text;
-
             setupSection.classList.add('hidden');
             reportingSection.classList.remove('hidden');
             reportingTitle.textContent = `${tournamentName} - ${tableName}`;
+            updateStatus(`Reporting started for ${tableName}.`);
         });
 
         changeTableBtn.addEventListener('click', () => {
             setupSection.classList.remove('hidden');
             reportingSection.classList.add('hidden');
             reportingTitle.textContent = '';
+            updateStatus("Returned to table selection.");
         });
 
         // 페이지 로드 시 세션 확인
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('DOM 로드 완료. getSession 시도...');
+            if (!supabase) return;
+            updateStatus("DOM loaded. Checking for active session...");
             showLoader();
             const { data: { session }, error } = await supabase.auth.getSession();
-            console.log('초기 세션 확인 결과:', session);
-            if(error) console.error("getSession 오류:", error);
+            if (error) updateStatus(`getSession Error: ${error.message}`, true);
 
             handleSession(session);
             
             supabase.auth.onAuthStateChange((_event, session) => {
-                console.log('onAuthStateChange 이벤트 발생:', _event, '세션:', session);
+                updateStatus(`Auth state changed. Event: ${_event}`);
                 handleSession(session);
             });
         });
