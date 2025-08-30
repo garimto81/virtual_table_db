@@ -3,288 +3,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PLARS - Supabase v4.1 연동 테스트</title>
+    <title>PLARS - Live Reporter App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .log-box { font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; word-wrap: break-word; }
-        button:disabled { cursor: not-allowed; opacity: 0.5; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         .hidden { display: none; }
+        .action-btn { transition: all 0.2s ease; }
+        .action-btn:active { transform: scale(0.95); }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 p-4 sm:p-8">
+<body class="bg-gray-100 text-gray-800">
 
-    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-        <header class="mb-6 pb-4 border-b">
-            <h1 class="text-3xl font-bold text-gray-900">PLARS - Supabase v4.1 연동 테스트</h1>
-            <p class="text-gray-600 mt-1">v4.1 스키마의 핵심 기능(테이블 생성, 관계 설정, 액션 기록)을 테스트합니다.</p>
-        </header>
+    <!-- 로딩 스피너 -->
+    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="loader"></div>
+    </div>
 
-        <!-- Auth Section -->
-        <div id="authSection" class="mb-6 p-4 bg-gray-50 rounded-lg border">
-            <h2 class="text-xl font-semibold mb-3">로그인</h2>
-            <div id="loginForm" class="space-y-3">
-                <input type="email" id="email" placeholder="이메일 (e.g., test@example.com)" class="w-full p-2 border rounded">
-                <input type="password" id="password" placeholder="비밀번호" class="w-full p-2 border rounded">
-                <button id="loginBtn" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">이메일로 로그인</button>
-                <div class="relative flex py-2 items-center">
-                    <div class="flex-grow border-t border-gray-300"></div>
-                    <span class="flex-shrink mx-4 text-gray-400">또는</span>
-                    <div class="flex-grow border-t border-gray-300"></div>
-                </div>
-                <button id="googleLoginBtn" class="w-full bg-white text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 flex items-center justify-center">
-                    <svg class="w-5 h-5 mr-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.519-3.317-11.284-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C42.021,35.591,44,30.021,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
-                    Google 계정으로 로그인
-                </button>
-            </div>
-            <div id="userInfo" class="hidden items-center justify-between">
-                <p>로그인 상태: <span id="userEmail" class="font-semibold"></span></p>
-                <button id="logoutBtn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600">로그아웃</button>
-            </div>
-        </div>
-
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- 컨트롤 패널 -->
-            <div id="controlPanel" class="space-y-4 opacity-30 pointer-events-none">
-                <div>
-                    <h2 class="text-xl font-semibold mb-2">1. 기본 데이터 생성</h2>
-                    <button id="initDataBtn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300" disabled>1. 샘플 생성 (대회, 선수, 테이블, 참가)</button>
-                    <p class="text-sm text-gray-500 mt-1">새로운 대회, 전역 선수, 테이블, 그리고 대회 참가를 생성합니다.</p>
-                </div>
-                <div>
-                    <h2 class="text-xl font-semibold mb-2">2. 핸드 기록</h2>
-                    <button id="startHandBtn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300" disabled>2. 새 핸드 시작</button>
-                    <p class="text-sm text-gray-500 mt-1">생성된 테이블에 새 핸드와 참여자 정보를 기록합니다.</p>
-                </div>
-                <div>
-                    <h2 class="text-xl font-semibold mb-2">3. 액션 기록</h2>
-                    <button id="recordActionBtn" class="w-full bg-yellow-500 text-black font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition duration-300" disabled>3. 임의 액션 기록</button>
-                    <p class="text-sm text-gray-500 mt-1">현재 핸드에 임의의 액션을 추가합니다.</p>
-                </div>
-                 <div>
-                    <h2 class="text-xl font-semibold mb-2">4. 데이터 초기화</h2>
-                    <button id="resetDataBtn" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300" disabled>전체 데이터 삭제 (주의!)</button>
-                    <p class="text-sm text-gray-500 mt-1">테스트로 생성된 모든 데이터를 삭제합니다.</p>
-                </div>
-            </div>
-
-            <!-- 로그 출력 -->
-            <div class="bg-gray-900 text-white rounded-lg p-4 h-[500px] overflow-y-auto">
-                <h2 class="text-xl font-semibold mb-2 border-b border-gray-700 pb-2">실행 로그</h2>
-                <pre id="log" class="log-box text-sm"></pre>
-            </div>
+    <!-- 로그인 화면 -->
+    <div id="login-view" class="min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-lg text-center w-full max-w-sm">
+            <h1 class="text-3xl font-bold mb-2">PLARS</h1>
+            <p class="text-gray-600 mb-6">Live Poker Reporting System</p>
+            <button id="login-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 action-btn flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="m24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.574l6.19 5.238C42.021 35.596 44 30.134 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>
+                <span>Google 계정으로 로그인</span>
+            </button>
         </div>
     </div>
 
+    <!-- 메인 앱 화면 -->
+    <div id="app-view" class="hidden">
+        <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
+            <h1 class="text-xl font-bold">PLARS Reporter</h1>
+            <div>
+                <span id="user-email" class="text-sm text-gray-600 mr-4"></span>
+                <button id="logout-btn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 text-sm action-btn">로그아웃</button>
+            </div>
+        </header>
+
+        <main class="p-4 sm:p-6">
+            <div id="setup-section" class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">리포팅 설정</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="tournament-select" class="block text-sm font-medium text-gray-700">1. 대회 선택</label>
+                        <select id="tournament-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option>대회를 선택하세요...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="table-select" class="block text-sm font-medium text-gray-700">2. 테이블 선택</label>
+                        <select id="table-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" disabled>
+                            <option>대회를 먼저 선택하세요...</option>
+                        </select>
+                    </div>
+                     <button id="start-reporting-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 action-btn" disabled>리포팅 시작</button>
+                </div>
+            </div>
+
+            <div id="reporting-section" class="hidden mt-6 max-w-4xl mx-auto">
+                 <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold"><span id="reporting-title"></span></h2>
+                    <button id="change-table-btn" class="bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-600 text-sm action-btn">테이블 변경</button>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <p class="text-center text-gray-600">이곳에 선택된 테이블의 플레이어 목록과 핸드 기록 UI가 표시됩니다.</p>
+                    <p class="text-center mt-4 font-semibold">"핸드 시작" 버튼을 눌러 기록을 시작하세요.</p>
+                     <div class="mt-6 text-center">
+                        <button id="new-hand-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 action-btn text-lg">새 핸드 시작</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
     <script>
-        const SUPABASE_URL = 'https://qsciyoipngixaqhdqjjf.supabase.co'; 
+        // ===================================================================================
+        // TODO: 아래 Supabase 설정을 자신의 프로젝트 설정으로 교체하세요.
+        // ===================================================================================
+        const SUPABASE_URL = 'https://qsciyoipngixaqhdqjjf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzY2l5b2lwbmdpeGFxaGRxampmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1MzgzODMsImV4cCI6MjA3MjExNDM4M30.wxkPZjV65yTfJKv1vqxE5Rd7lDsYPk_qISZG_WuGN2g';
+        const ALLOWED_DOMAIN = 'ggproduction.net';
 
+        // 전역 변수
         let supabase;
-        let testData = {}; 
-
-        // UI Elements
-        const controlPanel = document.getElementById('controlPanel');
-        const loginForm = document.getElementById('loginForm');
-        const userInfo = document.getElementById('userInfo');
-        const userEmailEl = document.getElementById('userEmail');
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const googleLoginBtn = document.getElementById('googleLoginBtn');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-
-        const initDataBtn = document.getElementById('initDataBtn');
-        const startHandBtn = document.getElementById('startHandBtn');
-        const recordActionBtn = document.getElementById('recordActionBtn');
-        const resetDataBtn = document.getElementById('resetDataBtn');
-        const logEl = document.getElementById('log');
-
-        function log(message) {
-            console.log(message);
-            const time = new Date().toLocaleTimeString();
-            logEl.textContent = `[${time}] ${message}\n` + logEl.textContent;
-        }
-
-        function setUI(isLoggedIn) {
-            if(isLoggedIn) {
-                loginForm.classList.add('hidden');
-                userInfo.classList.remove('hidden');
-                controlPanel.classList.remove('opacity-30', 'pointer-events-none');
-                [initDataBtn, resetDataBtn].forEach(btn => btn.disabled = false);
-                 // 핸드/액션 버튼은 데이터 생성 후 활성화
-                startHandBtn.disabled = !testData.entryId;
-                recordActionBtn.disabled = !testData.handId;
-            } else {
-                loginForm.classList.remove('hidden');
-                userInfo.classList.add('hidden');
-                controlPanel.classList.add('opacity-30', 'pointer-events-none');
-                [initDataBtn, startHandBtn, recordActionBtn, resetDataBtn].forEach(btn => btn.disabled = true);
-                userEmailEl.textContent = '';
-            }
-        }
         
+        // UI Elements
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const loginView = document.getElementById('login-view');
+        const appView = document.getElementById('app-view');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userEmailEl = document.getElementById('user-email');
+        const tournamentSelect = document.getElementById('tournament-select');
+        const tableSelect = document.getElementById('table-select');
+        const startReportingBtn = document.getElementById('start-reporting-btn');
+        const setupSection = document.getElementById('setup-section');
+        const reportingSection = document.getElementById('reporting-section');
+        const reportingTitle = document.getElementById('reporting-title');
+        const changeTableBtn = document.getElementById('change-table-btn');
+
+        // Helper functions
+        const showLoader = () => loadingSpinner.classList.remove('hidden');
+        const hideLoader = () => loadingSpinner.classList.add('hidden');
+
         // Supabase 초기화
         try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            log("Supabase 클라이언트 초기화 완료. 로그인이 필요합니다.");
+            if (SUPABASE_URL.includes('your_supabase_url') || SUPABASE_ANON_KEY.includes('your_supabase_anon_key')) {
+                alert("Supabase URL과 Anon Key를 설정해주세요.");
+            } else {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
         } catch (e) {
-            log("Supabase 초기화 실패: " + e.message);
+            console.error("Supabase 초기화 실패:", e);
         }
 
-        // --- 인증 로직 (OAuth 포함) ---
-        
-        // 페이지 로드 시 현재 세션 확인
-        (async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                userEmailEl.textContent = session.user.email;
-                setUI(true);
-            } else {
-                setUI(false);
-            }
-        })();
-        
-        // 인증 상태 변경 감지 (로그인, 로그아웃, 토큰 갱신 등)
-        supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
-                userEmailEl.textContent = session.user.email;
-                setUI(true);
-                log(`로그인/세션 갱신: ${session.user.email}`);
-            }
-            if (event === 'SIGNED_OUT') {
-                setUI(false);
-                log('로그아웃 되었습니다.');
-            }
-        });
-
-        // 이메일 로그인
+        // 로그인/세션 관리
         loginBtn.addEventListener('click', async () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                log(`로그인 실패: ${error.message}`);
-                alert('로그인 실패: ' + error.message);
-            }
-        });
-
-        // 구글 로그인
-        googleLoginBtn.addEventListener('click', async () => {
-            log("Google 로그인을 시작합니다...");
-            await supabase.auth.signInWithOAuth({
+            showLoader();
+            const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     queryParams: {
-                        hd: 'ggproduction.net' // Hosted Domain 제한
+                        hd: ALLOWED_DOMAIN
                     }
                 }
             });
-        });
-
-        // 로그아웃
-        logoutBtn.addEventListener('click', async () => {
-            const { error } = await supabase.auth.signOut();
             if (error) {
-                log(`로그아웃 실패: ${error.message}`);
+                console.error('Google 로그인 오류:', error);
+                alert('로그인에 실패했습니다. 콘솔을 확인해주세요.');
+                hideLoader();
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            showLoader();
+            await supabase.auth.signOut();
+            window.location.reload();
+        });
+
+        async function handleSession(session) {
+            if (session && session.user) {
+                 if (session.user.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+                    loginView.classList.add('hidden');
+                    appView.classList.remove('hidden');
+                    userEmailEl.textContent = session.user.email;
+                    await loadTournaments();
+                } else {
+                    alert(`'${ALLOWED_DOMAIN}' 도메인 사용자만 접근할 수 있습니다.`);
+                    await supabase.auth.signOut();
+                }
+            } else {
+                loginView.classList.remove('hidden');
+                appView.classList.add('hidden');
+            }
+            hideLoader();
+        }
+
+        // 데이터 로딩 함수
+        async function loadTournaments() {
+            const { data, error } = await supabase
+                .from('tournaments')
+                .select('id, tournament_name')
+                .eq('status', 'active')
+                .order('start_date', { ascending: false });
+
+            if (error) {
+                console.error('대회 목록 로딩 실패:', error);
+                return;
+            }
+
+            tournamentSelect.innerHTML = '<option>대회를 선택하세요...</option>';
+            data.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.id;
+                option.textContent = t.tournament_name;
+                tournamentSelect.appendChild(option);
+            });
+        }
+        
+        async function loadTables(tournamentId) {
+            const { data, error } = await supabase
+                .from('tournament_tables')
+                .select('id, table_name, table_number')
+                .eq('tournament_id', tournamentId)
+                .order('table_number', { ascending: true });
+
+            if (error) {
+                console.error('테이블 목록 로딩 실패:', error);
+                return;
+            }
+            
+            tableSelect.innerHTML = '<option>테이블을 선택하세요...</option>';
+            data.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.id;
+                option.textContent = `${t.table_number}. ${t.table_name}`;
+                tableSelect.appendChild(option);
+            });
+            tableSelect.disabled = false;
+        }
+
+        // 이벤트 리스너
+        tournamentSelect.addEventListener('change', () => {
+            const tournamentId = tournamentSelect.value;
+            if (tournamentId && tournamentId !== '대회를 선택하세요...') {
+                tableSelect.innerHTML = '<option>로딩 중...</option>';
+                loadTables(tournamentId);
+            } else {
+                tableSelect.innerHTML = '<option>대회를 먼저 선택하세요...</option>';
+                tableSelect.disabled = true;
+                startReportingBtn.disabled = true;
             }
         });
         
-        // --- 데이터 관리 로직 ---
-
-        initDataBtn.addEventListener('click', async () => {
-            log("v4.1 샘플 데이터 생성을 시작합니다...");
-            try {
-                const tournamentName = `PLARS Open ${new Date().getFullYear()}`;
-                const { data: tData, error: tError } = await supabase.from('tournaments').insert({ tournament_name: tournamentName, start_date: new Date().toISOString(), end_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), venue: 'Test Venue', buy_in: 3000000, starting_chips: 30000 }).select().single();
-                if (tError) throw tError;
-                testData.tournamentId = tData.id;
-                log(`- 대회 생성: ${tData.tournament_name}`);
-
-                const { data: pData, error: pError } = await supabase.from('player_registry').insert({ legal_name: `Test Player ${Math.floor(Math.random() * 1000)}`, nickname: 'Tester' }).select().single();
-                if (pError) throw pError;
-                testData.playerId = pData.id;
-                log(`- 선수 등록: ${pData.legal_name}`);
-
-                const { data: ttData, error: ttError } = await supabase.from('tournament_tables').insert({ tournament_id: testData.tournamentId, table_number: 1, table_name: 'Feature Table' }).select().single();
-                if (ttError) throw ttError;
-                testData.tableId = ttData.id;
-                log(`- 테이블 생성: ${ttData.table_name}`);
-
-                const { data: teData, error: teError } = await supabase.from('tournament_entries').insert({ tournament_id: testData.tournamentId, player_id: testData.playerId, table_id: testData.tableId, seat_number: 5, buy_in_paid: tData.buy_in, chip_count: tData.starting_chips }).select().single();
-                if (teError) throw teError;
-                testData.entryId = teData.id;
-                log(`- 대회 참가 완료 (Entry ID: ...${teData.id.slice(-6)})`);
-
-                log("모든 기본 데이터가 성공적으로 생성되었습니다.");
-                startHandBtn.disabled = false;
-                initDataBtn.disabled = true;
-
-            } catch (e) {
-                log(`오류 발생: ${e.message}`);
-            }
+        tableSelect.addEventListener('change', () => {
+            const tableId = tableSelect.value;
+            startReportingBtn.disabled = !(tableId && tableId !== '테이블을 선택하세요...');
         });
         
-        startHandBtn.addEventListener('click', async () => {
-            log("새 핸드를 시작합니다...");
-            try {
-                const { data: hData, error: hError } = await supabase.from('hands').insert({ tournament_id: testData.tournamentId, table_id: testData.tableId, blind_level: 1, small_blind: 100, big_blind: 200, dealer_seat: 1 }).select().single();
-                if (hError) throw hError;
-                testData.handId = hData.id;
-                testData.handStartedAt = hData.started_at;
-                log(`- 핸드 #${hData.hand_number} 생성 완료`);
+        startReportingBtn.addEventListener('click', () => {
+            const tournamentName = tournamentSelect.options[tournamentSelect.selectedIndex].text;
+            const tableName = tableSelect.options[tableSelect.selectedIndex].text;
 
-                const { data: hpData, error: hpError } = await supabase.from('hand_players').insert({ hand_id: testData.handId, hand_started_at: testData.handStartedAt, entry_id: testData.entryId, seat_number: 5, position: 'BTN', stack_before: 30000 }).select().single();
-                if (hpError) throw hpError;
-                testData.handPlayerId = hpData.id;
-                log(`- 핸드 참여자 정보 생성 완료`);
-
-                log("새 핸드 시작 처리가 완료되었습니다.");
-                recordActionBtn.disabled = false;
-                startHandBtn.disabled = true;
-
-            } catch (e) {
-                log(`핸드 시작 중 오류: ${e.message}`);
-            }
+            setupSection.classList.add('hidden');
+            reportingSection.classList.remove('hidden');
+            reportingTitle.textContent = `${tournamentName} - ${tableName}`;
         });
 
-        recordActionBtn.addEventListener('click', async () => {
-            log("액션을 기록합니다...");
-            try {
-                const { data, error } = await supabase.from('hand_actions').insert({ hand_id: testData.handId, entry_id: testData.entryId, street: 'preflop', action_sequence: 1, action: 'bet', amount: 200, pot_after: 500, stack_after: 29800 }).select().single();
-                if (error) throw error;
-                log(`- 액션 기록 완료 (Action ID: ${data.id})`);
-            } catch (e) {
-                log(`액션 기록 중 오류: ${e.message}`);
-            }
+        changeTableBtn.addEventListener('click', () => {
+            setupSection.classList.remove('hidden');
+            reportingSection.classList.add('hidden');
+            reportingTitle.textContent = '';
         });
 
-        resetDataBtn.addEventListener('click', async () => {
-            if (!confirm('정말로 모든 테스트 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
-            log("모든 데이터 삭제를 시작합니다...");
-            try {
-                if(testData.tournamentId) {
-                    const { error } = await supabase.from('tournaments').delete().eq('id', testData.tournamentId);
-                    if (error) throw error;
-                    log(`- 대회 및 관련 데이터 삭제 완료.`);
-                }
-                 if(testData.playerId) {
-                    const { error: pError } = await supabase.from('player_registry').delete().eq('id', testData.playerId);
-                    if (pError) throw pError;
-                    log(`- 선수 등록 정보 삭제 완료.`);
-                }
-                log("모든 데이터가 초기화되었습니다.");
-                testData = {};
-                startHandBtn.disabled = true;
-                recordActionBtn.disabled = true;
-                initDataBtn.disabled = false;
-            } catch(e) {
-                log(`데이터 삭제 중 오류: ${e.message}`);
-            }
+        // 페이지 로드 시 세션 확인
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoader();
+            const { data: { session } } = await supabase.auth.getSession();
+            handleSession(session);
+            
+            supabase.auth.onAuthStateChange((_event, session) => {
+                handleSession(session);
+            });
         });
+
     </script>
 </body>
 </html>
-
