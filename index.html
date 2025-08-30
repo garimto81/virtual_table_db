@@ -133,6 +133,7 @@
 
         // 로그인/세션 관리
         loginBtn.addEventListener('click', async () => {
+            console.log('Google 로그인 시도...');
             showLoader();
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -144,29 +145,35 @@
             });
             if (error) {
                 console.error('Google 로그인 오류:', error);
-                alert('로그인에 실패했습니다. 콘솔을 확인해주세요.');
+                alert('로그인에 실패했습니다. 개발자 콘솔을 확인해주세요.');
                 hideLoader();
             }
         });
 
         logoutBtn.addEventListener('click', async () => {
+            console.log('로그아웃 시도...');
             showLoader();
             await supabase.auth.signOut();
             window.location.reload();
         });
 
         async function handleSession(session) {
+            console.log('handleSession 호출됨. session:', session);
             if (session && session.user) {
+                console.log('사용자 이메일:', session.user.email);
                  if (session.user.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+                    console.log('도메인 확인 성공. 앱 뷰를 표시합니다.');
                     loginView.classList.add('hidden');
                     appView.classList.remove('hidden');
                     userEmailEl.textContent = session.user.email;
                     await loadTournaments();
                 } else {
+                    console.warn(`'${ALLOWED_DOMAIN}' 도메인 사용자가 아닙니다. 로그아웃 처리합니다.`);
                     alert(`'${ALLOWED_DOMAIN}' 도메인 사용자만 접근할 수 있습니다.`);
                     await supabase.auth.signOut();
                 }
             } else {
+                console.log('세션 없음. 로그인 뷰를 표시합니다.');
                 loginView.classList.remove('hidden');
                 appView.classList.add('hidden');
             }
@@ -252,11 +259,16 @@
 
         // 페이지 로드 시 세션 확인
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOM 로드 완료. getSession 시도...');
             showLoader();
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session }, error } = await supabase.auth.getSession();
+            console.log('초기 세션 확인 결과:', session);
+            if(error) console.error("getSession 오류:", error);
+
             handleSession(session);
             
             supabase.auth.onAuthStateChange((_event, session) => {
+                console.log('onAuthStateChange 이벤트 발생:', _event, '세션:', session);
                 handleSession(session);
             });
         });
@@ -264,3 +276,4 @@
     </script>
 </body>
 </html>
+
