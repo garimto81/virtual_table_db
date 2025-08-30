@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PLARS - Live Reporter App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PLARS Reporter App v5.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -19,39 +19,19 @@
             height: 40px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .player-seat { position: absolute; transform: translate(-50%, -50%); transition: all 0.3s ease; cursor: pointer; }
+        .player-active { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.7); transform: translate(-50%, -50%) scale(1.05); z-index: 10; }
+        .player-folded { opacity: 0.4; filter: grayscale(80%); }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- 로딩 스피너 -->
-    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="loader"></div>
-    </div>
+    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50"><div class="loader"></div></div>
 
-    <!-- 로그인 화면 -->
-    <div id="login-view" class="min-h-screen flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg shadow-lg text-center w-full max-w-sm">
-            <h1 class="text-3xl font-bold mb-2">PLARS</h1>
-            <p class="text-gray-600 mb-6">Live Poker Reporting System</p>
-            <button id="login-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 action-btn flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="m24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.574l6.19 5.238C42.021 35.596 44 30.134 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>
-                <span>Google 계정으로 로그인</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- 메인 앱 화면 -->
-    <div id="app-view" class="hidden">
-        <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
-            <h1 class="text-xl font-bold">PLARS Reporter</h1>
-            <div>
-                <span id="user-email" class="text-sm text-gray-600 mr-4"></span>
-                <button id="logout-btn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 text-sm action-btn">로그아웃</button>
-            </div>
+    <div id="app-view">
+        <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-40">
+            <h1 class="text-xl font-bold">PLARS Reporter v5.0</h1>
         </header>
 
         <main class="p-4 sm:p-6">
@@ -60,220 +40,235 @@
                 <div class="space-y-4">
                     <div>
                         <label for="tournament-select" class="block text-sm font-medium text-gray-700">1. 대회 선택</label>
-                        <select id="tournament-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                            <option>대회를 선택하세요...</option>
-                        </select>
+                        <select id="tournament-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
                     </div>
                     <div>
                         <label for="table-select" class="block text-sm font-medium text-gray-700">2. 테이블 선택</label>
-                        <select id="table-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" disabled>
-                            <option>대회를 먼저 선택하세요...</option>
-                        </select>
+                        <select id="table-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" disabled></select>
                     </div>
-                     <button id="start-reporting-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 action-btn" disabled>리포팅 시작</button>
+                    <button id="start-reporting-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 action-btn" disabled>리포팅 시작</button>
                 </div>
             </div>
 
-            <div id="reporting-section" class="hidden mt-6 max-w-4xl mx-auto">
-                 <div class="flex justify-between items-center mb-4">
+            <div id="reporting-section" class="hidden mt-6 max-w-5xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold"><span id="reporting-title"></span></h2>
                     <button id="change-table-btn" class="bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-600 text-sm action-btn">테이블 변경</button>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <p class="text-center text-gray-600">이곳에 선택된 테이블의 플레이어 목록과 핸드 기록 UI가 표시됩니다.</p>
-                    <p class="text-center mt-4 font-semibold">"핸드 시작" 버튼을 눌러 기록을 시작하세요.</p>
-                     <div class="mt-6 text-center">
-                        <button id="new-hand-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 action-btn text-lg">새 핸드 시작</button>
+                    <div id="pre-hand-view">
+                        <div id="player-list" class="mb-6"></div>
+                        <div class="text-center">
+                            <button id="new-hand-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 action-btn text-lg">새 핸드 시작</button>
+                        </div>
+                    </div>
+                    
+                    <div id="hand-recording-view" class="hidden">
+                        <div class="relative w-full h-[400px] bg-green-800 border-8 border-green-900 rounded-full mx-auto mb-6">
+                            <div id="poker-table-players" class="w-full h-full"></div>
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-white">
+                                <p class="font-bold text-lg">Pot: <span id="pot-size">0</span></p>
+                            </div>
+                        </div>
+                        <div id="action-panel" class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-xl mx-auto">
+                           <button data-action="fold" class="action-btn bg-gray-500 text-white font-bold py-3 rounded-lg">Fold</button>
+                           <button data-action="check" class="action-btn bg-blue-500 text-white font-bold py-3 rounded-lg">Check</button>
+                           <button data-action="call" class="action-btn bg-yellow-500 text-black font-bold py-3 rounded-lg">Call</button>
+                           <button data-action="bet" class="action-btn bg-red-600 text-white font-bold py-3 rounded-lg">Bet / Raise</button>
+                        </div>
+                         <div class="mt-4 text-center">
+                            <button id="end-hand-btn" class="text-sm text-gray-500 hover:text-red-600">핸드 종료</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- 상태 표시줄 -->
-    <footer id="status-bar" class="fixed bottom-0 left-0 w-full bg-gray-800 text-white p-2 text-xs text-center font-mono">
-        Initializing...
-    </footer>
+    <footer id="status-bar" class="fixed bottom-0 left-0 w-full bg-gray-800 text-white p-2 text-xs text-center font-mono z-50">Initializing...</footer>
 
     <script>
-        // ===================================================================================
-        // TODO: 아래 Supabase 설정을 자신의 프로젝트 설정으로 교체하세요.
-        // ===================================================================================
         const SUPABASE_URL = 'https://qsciyoipngixaqhdqjjf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzY2l5b2lwbmdpeGFxaGRxampmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1MzgzODMsImV4cCI6MjA3MjExNDM4M30.wxkPZjV65yTfJKv1vqxE5Rd7lDsYPk_qISZG_WuGN2g';
-        const ALLOWED_DOMAIN = 'ggproduction.net';
 
-        // 전역 변수
         let supabase;
-        
-        // UI Elements
-        const statusBar = document.getElementById('status-bar');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        const loginView = document.getElementById('login-view');
-        const appView = document.getElementById('app-view');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const userEmailEl = document.getElementById('user-email');
-        const tournamentSelect = document.getElementById('tournament-select');
-        const tableSelect = document.getElementById('table-select');
-        const startReportingBtn = document.getElementById('start-reporting-btn');
-        const setupSection = document.getElementById('setup-section');
-        const reportingSection = document.getElementById('reporting-section');
-        const reportingTitle = document.getElementById('reporting-title');
-        const changeTableBtn = document.getElementById('change-table-btn');
+        let currentTournament = {};
+        let currentTable = {};
+        let currentPlayers = [];
+        let currentHand = { id: null, actions: [] };
+        let activePlayerIndex = 0;
 
-        // Helper functions
-        const showLoader = () => loadingSpinner.classList.remove('hidden');
-        const hideLoader = () => loadingSpinner.classList.add('hidden');
+        const el = (id) => document.getElementById(id);
+        const showLoader = () => el('loadingSpinner').classList.remove('hidden');
+        const hideLoader = () => el('loadingSpinner').classList.add('hidden');
         const updateStatus = (message, isError = false) => {
-            console.log(`[STATUS] ${message}`);
-            statusBar.textContent = message;
-            statusBar.style.backgroundColor = isError ? '#ef4444' : '#374151';
+            const logType = isError ? 'error' : 'log';
+            console[logType](`[STATUS] ${message}`);
+            el('status-bar').textContent = message;
+            el('status-bar').style.backgroundColor = isError ? '#ef4444' : '#374151';
         };
 
-        // Supabase 초기화
         try {
-            if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR_SUPABASE_URL') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('YOUR_SUPABASE_ANON_KEY')) {
-                throw new Error("Supabase URL 또는 Anon Key가 설정되지 않았습니다.");
-            }
+            if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR_SUPABASE_URL')) throw new Error("Supabase URL이 설정되지 않았습니다.");
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            updateStatus("Supabase client initialized successfully.");
+            updateStatus("Supabase client initialized.");
         } catch (e) {
             updateStatus(`Initialization Error: ${e.message}`, true);
         }
 
-        // 로그인/세션 관리
-        loginBtn.addEventListener('click', async () => {
-            if (!supabase) return updateStatus("Supabase client is not available.", true);
-            updateStatus("Attempting Google sign-in...");
-            showLoader();
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    queryParams: { hd: ALLOWED_DOMAIN }
-                }
-            });
-            if (error) {
-                updateStatus(`Google Login Error: ${error.message}`, true);
-                hideLoader();
-            }
-        });
-
-        logoutBtn.addEventListener('click', async () => {
-            if (!supabase) return;
-            updateStatus("Signing out...");
-            showLoader();
-            await supabase.auth.signOut();
-            window.location.reload();
-        });
-
-        async function handleSession(session) {
-            updateStatus(session ? `Session found for ${session.user.email}` : "No active session.");
-            if (session && session.user) {
-                 if (session.user.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-                    updateStatus(`Domain verified for ${session.user.email}. Loading app...`);
-                    loginView.classList.add('hidden');
-                    appView.classList.remove('hidden');
-                    userEmailEl.textContent = session.user.email;
-                    await loadTournaments();
-                } else {
-                    updateStatus(`Access denied for ${session.user.email}. Signing out...`, true);
-                    alert(`'${ALLOWED_DOMAIN}' 도메인 사용자만 접근할 수 있습니다.`);
-                    await supabase.auth.signOut();
-                }
-            } else {
-                loginView.classList.remove('hidden');
-                appView.classList.add('hidden');
-            }
-            hideLoader();
-        }
-
-        // 데이터 로딩 함수
         async function loadTournaments() {
-            updateStatus("Loading active tournaments...");
-            const { data, error } = await supabase.from('tournaments').select('id, tournament_name').eq('status', 'active').order('start_date', { ascending: false });
-            if (error) {
-                updateStatus(`Failed to load tournaments: ${error.message}`, true);
-                return;
-            }
-            tournamentSelect.innerHTML = '<option>대회를 선택하세요...</option>';
-            data.forEach(t => {
-                const option = document.createElement('option');
-                option.value = t.id;
-                option.textContent = t.tournament_name;
-                tournamentSelect.appendChild(option);
-            });
-            updateStatus(`${data.length} active tournaments loaded.`);
+            showLoader();
+            const { data, error } = await supabase.from('tournaments').select('id, tournament_name').eq('status', 'active');
+            if (error) { hideLoader(); return updateStatus(`대회 로딩 실패: ${error.message}`, true); }
+            el('tournament-select').innerHTML = '<option>대회를 선택하세요...</option>';
+            data.forEach(t => el('tournament-select').innerHTML += `<option value='${JSON.stringify(t)}'>${t.tournament_name}</option>`);
+            hideLoader();
         }
         
         async function loadTables(tournamentId) {
-            updateStatus(`Loading tables for tournament ID: ${tournamentId.substring(0,8)}...`);
-            const { data, error } = await supabase.from('tournament_tables').select('id, table_name, table_number').eq('tournament_id', tournamentId).order('table_number', { ascending: true });
-            if (error) {
-                updateStatus(`Failed to load tables: ${error.message}`, true);
-                return;
-            }
-            tableSelect.innerHTML = '<option>테이블을 선택하세요...</option>';
-            data.forEach(t => {
-                const option = document.createElement('option');
-                option.value = t.id;
-                option.textContent = `${t.table_number}. ${t.table_name}`;
-                tableSelect.appendChild(option);
-            });
-            tableSelect.disabled = false;
-            updateStatus(`${data.length} tables loaded.`);
+            showLoader();
+            const { data, error } = await supabase.from('tournament_tables').select('*').eq('tournament_id', tournamentId).order('table_number');
+            if (error) { hideLoader(); return updateStatus(`테이블 로딩 실패: ${error.message}`, true); }
+            el('table-select').innerHTML = '<option>테이블을 선택하세요...</option>';
+            data.forEach(t => el('table-select').innerHTML += `<option value='${JSON.stringify(t)}'>${t.table_number}. ${t.table_name}</option>`);
+            el('table-select').disabled = false;
+            hideLoader();
         }
 
-        // 이벤트 리스너
-        tournamentSelect.addEventListener('change', () => {
-            const tournamentId = tournamentSelect.value;
-            if (tournamentId && tournamentId !== '대회를 선택하세요...') {
-                tableSelect.innerHTML = '<option>로딩 중...</option>';
-                loadTables(tournamentId);
-            } else {
-                tableSelect.innerHTML = '<option>대회를 먼저 선택하세요...</option>';
-                tableSelect.disabled = true;
-                startReportingBtn.disabled = true;
+        async function loadPlayers(tableId) {
+            showLoader();
+            const { data, error } = await supabase.from('tournament_entries').select(`*, player_registry!inner(*)`).eq('table_id', tableId).eq('status', 'active').order('seat_number');
+            if (error) { hideLoader(); return updateStatus(`플레이어 로딩 실패: ${error.message}`, true); }
+            currentPlayers = data;
+            el('player-list').innerHTML = `<h3 class="font-bold mb-2">테이블 플레이어 (${data.length}명)</h3>` +
+                data.map(p => `<div class="text-sm py-1">${p.seat_number}. ${p.player_registry.nickname || p.player_registry.legal_name} - ${p.chip_count.toLocaleString()} chips</div>`).join('');
+            hideLoader();
+        }
+
+        async function startNewHand() {
+            showLoader();
+            const handNumber = (currentTable.hands_played || 0) + 1;
+            
+            const { data: handData, error: handError } = await supabase.from('hands').insert({
+                tournament_id: currentTournament.id,
+                table_id: currentTable.id,
+                hand_number: handNumber,
+                dealer_seat: currentTable.dealer_seat || 1 // 임시 딜러 위치
+            }).select().single();
+            
+            if (handError) { hideLoader(); return updateStatus(`핸드 생성 실패: ${handError.message}`, true); }
+            
+            currentHand = { ...handData, actions: [] };
+
+            const handPlayerInserts = currentPlayers.map(p => ({
+                hand_id: currentHand.id,
+                entry_id: p.id,
+                seat_number: p.seat_number,
+                stack_before: p.chip_count
+            }));
+
+            const { error: playerError } = await supabase.from('hand_players').insert(handPlayerInserts);
+            if (playerError) { hideLoader(); return updateStatus(`핸드 참여자 생성 실패: ${playerError.message}`, true); }
+
+            await supabase.from('tournament_tables').update({ hands_played: handNumber }).eq('id', currentTable.id);
+            
+            el('pre-hand-view').classList.add('hidden');
+            renderPokerTable();
+            el('hand-recording-view').classList.remove('hidden');
+            updateStatus(`핸드 #${handNumber} 기록 시작.`);
+            hideLoader();
+        }
+
+        function renderPokerTable() {
+            const container = el('poker-table-players');
+            container.innerHTML = '';
+            const numPlayers = currentPlayers.length;
+            const radius = 160;
+            currentPlayers.forEach((player, index) => {
+                const angle = (index / numPlayers) * 2 * Math.PI - (Math.PI / 2);
+                const x = 50 + (radius / 200 * 100) * Math.cos(angle);
+                const y = 50 + (radius / 160 * 100) * Math.sin(angle);
+                const seatDiv = document.createElement('div');
+                seatDiv.className = 'player-seat w-32 p-2 bg-gray-200 rounded-lg shadow text-center';
+                seatDiv.style.left = `${x}%`;
+                seatDiv.style.top = `${y}%`;
+                if (index === activePlayerIndex) seatDiv.classList.add('player-active');
+                const name = player.player_registry.nickname || player.player_registry.legal_name;
+                seatDiv.innerHTML = `<p class="font-bold text-sm truncate">${name}</p><p class="text-xs text-gray-700">${player.chip_count.toLocaleString()}</p>`;
+                container.appendChild(seatDiv);
+            });
+        }
+        
+        async function recordAction(actionType) {
+            const player = currentPlayers[activePlayerIndex];
+            if (!player) return updateStatus("액션할 플레이어가 없습니다.", true);
+            
+            showLoader();
+            const actionSequence = currentHand.actions.length + 1;
+            const actionPayload = {
+                hand_id: currentHand.id,
+                entry_id: player.id,
+                street: 'preflop', // TODO: Implement street logic
+                action_sequence: actionSequence,
+                action: actionType,
+                amount: 0, // TODO: Implement amount logic
+                stack_after: player.chip_count // TODO: Implement stack logic
+            };
+
+            const { data, error } = await supabase.from('hand_actions').insert(actionPayload).select().single();
+            hideLoader();
+            
+            if (error) return updateStatus(`액션 기록 실패: ${error.message}`, true);
+            
+            currentHand.actions.push(data);
+            updateStatus(`${player.player_registry.legal_name}(이)가 ${actionType} 액션을 했습니다.`);
+            
+            // 다음 플레이어로 턴 이동
+            activePlayerIndex = (activePlayerIndex + 1) % currentPlayers.length;
+            renderPokerTable();
+        }
+        
+        el('tournament-select').addEventListener('change', (e) => {
+            try { currentTournament = JSON.parse(e.target.value); loadTables(currentTournament.id); } catch {}
+        });
+        
+        el('table-select').addEventListener('change', (e) => {
+            try { currentTable = JSON.parse(e.target.value); el('start-reporting-btn').disabled = false; } catch {}
+        });
+        
+        el('start-reporting-btn').addEventListener('click', () => {
+            el('setup-section').classList.add('hidden');
+            el('reporting-section').classList.remove('hidden');
+            el('reporting-title').textContent = `${currentTournament.tournament_name} - ${currentTable.table_name}`;
+            loadPlayers(currentTable.id);
+        });
+
+        el('change-table-btn').addEventListener('click', () => {
+            el('setup-section').classList.remove('hidden');
+            el('reporting-section').classList.add('hidden');
+        });
+
+        el('new-hand-btn').addEventListener('click', startNewHand);
+        
+        el('action-panel').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' && e.target.dataset.action) {
+                recordAction(e.target.dataset.action);
             }
         });
-        
-        tableSelect.addEventListener('change', () => {
-            const tableId = tableSelect.value;
-            startReportingBtn.disabled = !(tableId && tableId !== '테이블을 선택하세요...');
-        });
-        
-        startReportingBtn.addEventListener('click', () => {
-            const tournamentName = tournamentSelect.options[tournamentSelect.selectedIndex].text;
-            const tableName = tableSelect.options[tableSelect.selectedIndex].text;
-            setupSection.classList.add('hidden');
-            reportingSection.classList.remove('hidden');
-            reportingTitle.textContent = `${tournamentName} - ${tableName}`;
-            updateStatus(`Reporting started for ${tableName}.`);
+
+        el('end-hand-btn').addEventListener('click', () => {
+            el('hand-recording-view').classList.add('hidden');
+            el('pre-hand-view').classList.remove('hidden');
+            activePlayerIndex = 0;
+            currentHand = { id: null, actions: [] };
+            updateStatus("핸드 종료됨. 다음 핸드를 시작할 수 있습니다.");
         });
 
-        changeTableBtn.addEventListener('click', () => {
-            setupSection.classList.remove('hidden');
-            reportingSection.classList.add('hidden');
-            reportingTitle.textContent = '';
-            updateStatus("Returned to table selection.");
-        });
-
-        // 페이지 로드 시 세션 확인
         document.addEventListener('DOMContentLoaded', async () => {
             if (!supabase) return;
-            updateStatus("DOM loaded. Checking for active session...");
-            showLoader();
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) updateStatus(`getSession Error: ${error.message}`, true);
-
-            handleSession(session);
-            
-            supabase.auth.onAuthStateChange((_event, session) => {
-                updateStatus(`Auth state changed. Event: ${_event}`);
-                handleSession(session);
-            });
+            updateStatus("앱 로딩 완료. 인증을 생략하고 DB 연동을 시작합니다.");
+            await loadTournaments();
         });
-
     </script>
 </body>
 </html>
